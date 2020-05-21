@@ -6,26 +6,42 @@ namespace Y2Snes.Core
     public partial class Cpu
     {
 
+        //10
+        void BPL(sbyte n)
+        {
+            // Branch if Plus
+            if (NegativeFlag == false)
+            {
+                int jmp = (int)PC + (int)n;
+                PC = (ushort) jmp;
+            }
+            else
+            {
 
-        // ********************
-        // Instruction Handlers 
-        // ********************
+            }
+        }
 
 
-        // 0x18
+        // 18
         void CLC()
         {
             ClearFlag(CpuFlag.Carry);
         }
 
-        // 0x1B
+        // 1B
         void TCS()
         {
             // Transfer 16-bit Accumulator to Stack Pointer
             SP = A;
         }
 
-        // 0x5B
+        // 38
+        void SEC()
+        {
+            SetFlag(CpuFlag.Carry);
+        }
+
+        // 5B
         void TCD()
         {
             // Transfer 16-bit Accumulator to Direct Page Register
@@ -34,29 +50,91 @@ namespace Y2Snes.Core
         }
 
  
-        // 0x78
+        // 78
         void SEI()
         {
             // Set Interrupt Disable Flag
             SetFlag(CpuFlag.IrqDisable);
         }
 
+        
+        // 98
+        void TYA_8()
+        {
+            // Transfer Index Register Y to Accumulator
+            AL = YL;
+            SetZN(AL);
+        }
+
+        // 98
+        void TYA_16()
+        {
+            A = Y;
+            SetZN(A);
+        }
+
+        // A8
+        void TAY_8()
+        {
+            // Transfer Accumulator to Index Register Y
+            YL = AL;
+            SetZN(YL);
+        }
+
+        // A8
+        void TAY_16()
+        {
+            Y = A;
+            SetZN(Y);
+        }
 
         // 0xC2
         void REP(byte flags)
         {
             // Clears the bits specified in the operands of the flag
-            P &= (byte)(~flags);            
+            P &= (byte)(~flags);
+
+            if (XFlag)
+            {
+                XH = 0;
+                YH = 0;
+            }
         }
 
+        // CA
+        void DEX_8()
+        {
+            XL--;
+            SetZN(XL);
+        }
 
-        // 0xEA
+        // CA
+        void DEX_16()
+        {
+            X--;
+            SetZN(X);
+        }
+
+        // 0xE2
+        void SEP(byte flags)
+        {
+            // Sets the bits specified in the operands of the flag
+            P |= flags;
+
+            if (XFlag)
+            {
+                XH = 0;
+                YH = 0;
+            }
+        }
+
+        // EA
         void NOP()
         {
         }
 
 
-        // 0xFB
+        // FB
         bool emulationModeChange = false;
         void XCE()
         {

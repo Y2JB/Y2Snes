@@ -14,7 +14,12 @@ namespace Y2Snes.Core
 
         // Index registers
         public ushort X { get; set; }
+        public byte XL { get { return (byte)(X & 0x00FF); } set { X = (ushort)((X & 0xFF00) | value); } }
+        public byte XH { get { return (byte)((X & 0xFF00) >> 8); } set { X = (ushort)((X & 0x00FF) | (ushort)(value << 8)); } }
+
         public ushort Y { get; set; }
+        public byte YL { get { return (byte)(Y & 0x00FF); } set { Y = (ushort)((Y & 0xFF00) | value); } }
+        public byte YH { get { return (byte)((Y & 0xFF00) >> 8); } set { Y = (ushort)((Y & 0x00FF) | (ushort)(value << 8)); } }
 
         // Direct Page (Zero Page) register
         public ushort D { get; set; }
@@ -34,7 +39,7 @@ namespace Y2Snes.Core
         // Stack Pointer (16 bit)
         public ushort SP { get; set; }
 
-        public IAbsoluteMemoryReaderWriter MemoryAbsolute { get; private set; }
+        public IAbsoluteLongMemoryReaderWriter MemoryAbsolute { get; private set; }
 
         SuperFamicom system;
         IBankedMemoryReaderWriter memoryMap;
@@ -45,7 +50,7 @@ namespace Y2Snes.Core
             this.system = system;
             memoryMap = system.MemoryMap;
 
-            MemoryAbsolute = new AbsoluteMemoryReaderWriter(memoryMap);
+            MemoryAbsolute = new AbsoluteLongMemoryReaderWriter(memoryMap);
 
             RegisterInstructionHandlers();
         }
@@ -88,8 +93,11 @@ namespace Y2Snes.Core
             }
             PC += instruction.OperandLength;
 
-            // TODO: or can openbus just be set in memory.read?
-            // OpenBus = foo
+            // This is how we adjust memory addresses when the cpu uses different addressing modes such as AbsoluteIndexX
+            if(instruction.OperandAdjuster != null)
+            {
+                operandValue = instruction.OperandAdjuster(operandValue);
+            }
 
             instruction.Handler(operandValue);
         }
@@ -101,7 +109,7 @@ namespace Y2Snes.Core
                                                                     XFlag ? "X" : "-", MFlag ? "M" : "-", OverflowFlag ? "V" : "-", NegativeFlag ? "N" : "-");
 
 
-            return String.Format("PC: ({0:X2}){1}{2}A: {3:X4}{4}X: {5:X4}{6}Y - {7:X4}{8}SP - {9:X4}{10}D - {11:X4}{12}DB - {13:X2}{14}P - {15:X2}{16}{17}{18}",
+            return String.Format("PC: ({0:X2}){1:X4}{2}A: {3:X4}{4}X: {5:X4}{6}Y - {7:X4}{8}SP - {9:X4}{10}D - {11:X4}{12}DB - {13:X2}{14}P - {15:X2}{16}{17}{18}",
                                     PB, PC, Environment.NewLine, 
                                     A, Environment.NewLine, 
                                     X, Environment.NewLine, 

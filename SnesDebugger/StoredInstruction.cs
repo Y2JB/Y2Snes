@@ -31,7 +31,7 @@ namespace SnesDebugger
             };
         }
 
-        public StoredInstruction(string name, byte opCode, byte operandLength, Action<ushort> handler) : base(name, opCode, operandLength, null)
+        public StoredInstruction(string name, byte opCode, byte operandLength, Action<ushort> handler) : base(name, opCode, operandLength, null, null)
         {
         }
 

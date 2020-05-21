@@ -21,10 +21,10 @@ namespace SnesDebugger
         ushort lhs, rhs;
         EqualityCheck equalitycheck;
 
-        IAbsoluteMemoryReader memory;
+        IAbsoluteLongMemoryReader memory;
 
 
-        public ConditionalExpression(IAbsoluteMemoryReader memory, ushort lhs, EqualityCheck op, ushort rhs)
+        public ConditionalExpression(IAbsoluteLongMemoryReader memory, ushort lhs, EqualityCheck op, ushort rhs)
         {
             this.memory = memory;
             this.lhs = lhs;
@@ -32,7 +32,7 @@ namespace SnesDebugger
             this.equalitycheck = op;
         }
 
-        public ConditionalExpression(IAbsoluteMemoryReader memory, string[] terms)
+        public ConditionalExpression(IAbsoluteLongMemoryReader memory, string[] terms)
         {
             this.memory = memory;
             if (terms.Length != 4)

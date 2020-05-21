@@ -2,7 +2,7 @@
 
 namespace Y2Snes.Core
 {
-    public interface IRom : IAbsoluteMemoryReader
+    public interface IRom : IAbsoluteLongMemoryReader
     {
      
     }

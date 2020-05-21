@@ -2,7 +2,7 @@
 
 namespace Y2Snes.Core
 {
-    public interface IAbsoluteMemoryReader
+    public interface IAbsoluteLongMemoryReader
     {
         // Can be used to access 16 & 24 bit addresses
         byte ReadByte(uint address);
@@ -10,7 +10,7 @@ namespace Y2Snes.Core
         uint ReadLong(uint address);
     }
 
-    public interface IAbsoluteMemoryWriter
+    public interface IAbsoluteLongMemoryWriter
     {
         // Can be used to access 16 & 24 bit addresses
         void WriteByte(uint address, byte value);
@@ -18,7 +18,7 @@ namespace Y2Snes.Core
         void WriteLong(uint address, uint value);
     }
 
-    public interface IAbsoluteMemoryReaderWriter : IAbsoluteMemoryReader, IAbsoluteMemoryWriter
+    public interface IAbsoluteLongMemoryReaderWriter : IAbsoluteLongMemoryReader, IAbsoluteLongMemoryWriter
     {
     }
 

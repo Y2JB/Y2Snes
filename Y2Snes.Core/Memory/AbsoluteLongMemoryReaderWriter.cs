@@ -2,12 +2,12 @@
 
 namespace Y2Snes.Core
 {
-    // Can be used to access 16 & 24 bit addresses
-    public class AbsoluteMemoryReaderWriter : IAbsoluteMemoryReaderWriter
+    // Used to directly access 24 bit addresses. Addresses will be interpetted as 24 bit
+    public class AbsoluteLongMemoryReaderWriter : IAbsoluteLongMemoryReaderWriter
     {
         IBankedMemoryReaderWriter memoryMap;
 
-        public AbsoluteMemoryReaderWriter(IBankedMemoryReaderWriter memoryMap)
+        public AbsoluteLongMemoryReaderWriter(IBankedMemoryReaderWriter memoryMap)
         {
             this.memoryMap = memoryMap;
         }
@@ -29,17 +29,16 @@ namespace Y2Snes.Core
         }
 
 
+
         public void WriteByte(uint address, byte value)
         {
             memoryMap.WriteByte((byte)((address & 0x00FF0000) >> 16), (ushort)(address & 0x0000FFFF), value);
         }
 
-
         public void WriteShort(uint address, ushort value)
         {
             memoryMap.WriteShort((byte)((address & 0x00FF0000) >> 16), (ushort)(address & 0x0000FFFF), value);
         }
-
 
         public void WriteLong(uint address, uint value)
         {
