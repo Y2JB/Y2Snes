@@ -47,14 +47,7 @@ namespace Y2Snes.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public byte ReadByte(uint address)
         {
-            uint fullAddress = (uint)(address);
-
-            //if(address < 0x4000)
-            {
-                return romData[fullAddress];
-            }
-
-            throw new ArgumentException("Invalid ROM read address");
+            return romData[address];
         }
 
 
@@ -66,5 +59,11 @@ namespace Y2Snes.Core
         }
 
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public uint ReadLong(uint address)
+        {
+            // NB: Little Endian
+            return (uint)((ReadByte((uint)(address + 2)) << 16) | (ReadByte((uint)(address + 1)) << 8) | ReadByte(address));
+        }
     }
 }

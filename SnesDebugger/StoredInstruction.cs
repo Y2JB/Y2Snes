@@ -8,7 +8,7 @@ namespace SnesDebugger
     {
         // These methods are only used when peeking the instruction, not when exectuing as then the data needs to be fetched 
         public bool HasOperand { get { return OperandLength != 0; } }
-        public ushort Operand { get; set; }
+        public uint Operand { get; set; }
         public ushort PC { get; set; }
 
         // NB: I'm not setting the handler as this is purely for debugging!

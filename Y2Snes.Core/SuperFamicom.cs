@@ -9,13 +9,17 @@ namespace Y2Snes.Core
         public Rom rom { get; private set; }
         public Cpu cpu { get; private set; }
         public Memory memory { get; private set; }
+        public LoRomMemoryMap MemoryMap { get; private set; }
+
 
         public void PowerOn()
         {
             rom = new Rom("../../../../roms/Super Mario World.smc");
-
-            cpu = new Cpu(this);
+            
+            
             memory = new Memory(this);
+            MemoryMap = new LoRomMemoryMap(memory);
+            cpu = new Cpu(this);
 
             cpu.Reset(rom.ResetVectorEM);
         }

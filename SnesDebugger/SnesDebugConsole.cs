@@ -23,7 +23,7 @@ namespace SnesDebugger
         // Next sequential instructions. Forst will be next to be executed
         public List<StoredInstruction> NextInstructions { get; private set; }
 
-        UInt32 lastTicks;
+        //UInt32 lastTicks;
 
         public List<string> ConsoleText { get; private set; }
         public List<string> ConsoleCodeText { get; private set; }
@@ -73,10 +73,8 @@ namespace SnesDebugger
 
             // SB : b $64 if [IO_LY] == 2
             //breakpoints.Add(new Breakpoint(0x0));
-            //breakpoints.Add(new Breakpoint(0x40));
-            //breakpoints.Add(new Breakpoint(0x50));
+            breakpoints.Add(new Breakpoint(0x801D));
 
-            //breakpoints.Add(new Breakpoint(0xFE));
 
             //breakpoints.Add(new Breakpoint(0x64, new ConditionalExpression(snes.memory, 0xFF44, ConditionalExpression.EqualityCheck.Equal, 143)));
 
@@ -186,18 +184,17 @@ namespace SnesDebugger
 
         bool MemCommand(string[] parameters)
         {
-            /*
             if (parameters.Length == 1 || parameters.Length == 2)
             {
 
-                ushort p1 = 0, p2 = 0;
+                uint p1 = 0, p2 = 0;
 
                 bool parsedParams;
 
-                parsedParams = ParseUShortParameter(parameters[0], out p1);
+                parsedParams = ParseUIntParameter(parameters[0], out p1);
                 if (parsedParams && parameters.Length == 2)
                 {
-                    parsedParams = ParseUShortParameter(parameters[1], out p2);
+                    parsedParams = ParseUIntParameter(parameters[1], out p2);
                 }
 
 
@@ -205,7 +202,7 @@ namespace SnesDebugger
                 {
                     if (parameters.Length == 1)
                     {
-                        ConsoleAddString(String.Format("Ram[0x{0:X4}] == 0x{1:X2}", p1, snes.memory.ReadByte(p1)));
+                        ConsoleAddString(String.Format("Ram[0x{0:X4}] == 0x{1:X2}", p1, snes.cpu.MemoryAbsolute.ReadByte(p1)));
                         return true;
                     }
                     else
@@ -215,14 +212,14 @@ namespace SnesDebugger
                             ConsoleAddString(String.Format("mem write value must be 0 - 255"));
                             return false;
                         }
-                        snes.memory.WriteByte(p1, (byte)p2);
+                        snes.cpu.MemoryAbsolute.WriteByte(p1, (byte)p2);
                         ConsoleAddString(String.Format("Written. Ram[0x{0:X4}] == 0x{1:X2}", p1, p2));
                         return true;
                     }
                 }
                 
             }
-            */
+  
             // Fail
             ConsoleAddString(String.Format("mem usage: 'mem n' for read, 'mem n n' for write. n can be of the form 255 or 0xFF"));
             return false;
@@ -232,7 +229,6 @@ namespace SnesDebugger
         // b 0xC06A if 0xff40 == 2
         bool BreakpointCommand(string[] parameters)
         {
-            /*
             if (parameters.Length != 1 && parameters.Length != 5)
             {
                 ConsoleAddString(String.Format("breakpoint: Invalid number of parameters. Usage:'breakpoint 0xC100'"));
@@ -247,6 +243,7 @@ namespace SnesDebugger
             // Parse condtiion
             global::SnesDebugger.ConditionalExpression expression = null;
 
+            /*
             if (parameters.Length > 1)
             {
                 // Parse condition
@@ -260,114 +257,132 @@ namespace SnesDebugger
                     ConsoleAddString(String.Format("Error Adding breakpoint.\n{0}", ex.ToString()));
                 }
             }
+            */
 
             breakpoints.Add(new Breakpoint(p1, expression));
 
             ConsoleAddString(String.Format("breakpoint added at 0x{0:X4}", p1));
-            */
+ 
             return true;
         }
 
-/*
-        bool SetCommand(string[] parameters)
-        {
-            if (parameters.Length != 2)
-            {
-                // Fail
-                ConsoleAddString(String.Format("set usgage: set a 10, ser HL 0xFF..."));
-                return false;
-            }
-
-            parameters[0] = parameters[0].ToUpper();
-            // Param 1 is the register id
-            string[] registers = new string[] { "A", "B", "C", "D", "E", "F", "H", "L", "AF", "BC", "DE", "HL", "SP", "PC" };
-            bool match = false;
-            foreach (var s in registers)
-            {
-                if (String.Equals(parameters[0], s, StringComparison.OrdinalIgnoreCase))
+        /*
+                bool SetCommand(string[] parameters)
                 {
-                    match = true;
-                    break;
+                    if (parameters.Length != 2)
+                    {
+                        // Fail
+                        ConsoleAddString(String.Format("set usgage: set a 10, ser HL 0xFF..."));
+                        return false;
+                    }
+
+                    parameters[0] = parameters[0].ToUpper();
+                    // Param 1 is the register id
+                    string[] registers = new string[] { "A", "B", "C", "D", "E", "F", "H", "L", "AF", "BC", "DE", "HL", "SP", "PC" };
+                    bool match = false;
+                    foreach (var s in registers)
+                    {
+                        if (String.Equals(parameters[0], s, StringComparison.OrdinalIgnoreCase))
+                        {
+                            match = true;
+                            break;
+                        }
+                    }
+
+                    if (match == false)
+                    {
+                        ConsoleAddString(String.Format("set command: invalid register"));
+                    }
+
+                    //Param 2 is the value
+                    bool parsedParams;
+                    ushort value;
+                    parsedParams = ParseUShortParameter(parameters[1], out value);
+
+                    if (parsedParams == false)
+                    {
+                        ConsoleAddString(String.Format("set command: parameter 2 must be a number"));
+                    }
+
+                    // This isn't pretty but it's UI code and the debugger just needs to work.
+                    switch (parameters[0])
+                    {
+                        case "A":
+                            snes.cpu.A = (byte)value;
+                            break;
+
+                        case "B":
+                            snes.cpu.B = (byte)value;
+                            break;
+
+                        case "C":
+                            snes.cpu.C = (byte)value;
+                            break;
+
+                        case "D":
+                            snes.cpu.D = (byte)value;
+                            break;
+
+                        case "E":
+                            snes.cpu.E = (byte)value;
+                            break;
+
+                        case "F":
+                            snes.cpu.F = (byte)value;
+                            break;
+
+                        case "H":
+                            snes.cpu.H = (byte)value;
+                            break;
+
+                        case "L":
+                            snes.cpu.L = (byte)value;
+                            break;
+
+                        case "AF":
+                            snes.cpu.AF = value;
+                            break;
+
+                        case "BC":
+                            snes.cpu.BC = value;
+                            break;
+
+                        case "DE":
+                            snes.cpu.DE = value;
+                            break;
+
+                        case "HL":
+                            snes.cpu.HL = value;
+                            break;
+
+                        case "SP":
+                            snes.cpu.SP = value;
+                            break;
+
+                        case "PC":
+                            snes.cpu.PC = value;
+                            break;
+                    }
+                    return true;
                 }
-            }
+        */
 
-            if (match == false)
+
+        // Try to parse a base 10 or base 16 number from string
+        bool ParseUIntParameter(string p, out uint value)
+        {
+            if (uint.TryParse(p, out value) == false)
             {
-                ConsoleAddString(String.Format("set command: invalid register"));
-            }
-
-            //Param 2 is the value
-            bool parsedParams;
-            ushort value;
-            parsedParams = ParseUShortParameter(parameters[1], out value);
-
-            if (parsedParams == false)
-            {
-                ConsoleAddString(String.Format("set command: parameter 2 must be a number"));
-            }
-
-            // This isn't pretty but it's UI code and the debugger just needs to work.
-            switch (parameters[0])
-            {
-                case "A":
-                    snes.cpu.A = (byte)value;
-                    break;
-
-                case "B":
-                    snes.cpu.B = (byte)value;
-                    break;
-
-                case "C":
-                    snes.cpu.C = (byte)value;
-                    break;
-
-                case "D":
-                    snes.cpu.D = (byte)value;
-                    break;
-
-                case "E":
-                    snes.cpu.E = (byte)value;
-                    break;
-
-                case "F":
-                    snes.cpu.F = (byte)value;
-                    break;
-
-                case "H":
-                    snes.cpu.H = (byte)value;
-                    break;
-
-                case "L":
-                    snes.cpu.L = (byte)value;
-                    break;
-
-                case "AF":
-                    snes.cpu.AF = value;
-                    break;
-
-                case "BC":
-                    snes.cpu.BC = value;
-                    break;
-
-                case "DE":
-                    snes.cpu.DE = value;
-                    break;
-
-                case "HL":
-                    snes.cpu.HL = value;
-                    break;
-
-                case "SP":
-                    snes.cpu.SP = value;
-                    break;
-
-                case "PC":
-                    snes.cpu.PC = value;
-                    break;
+                // Is it hex?
+                if (p.StartsWith("0x", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    p = p.Substring(2);
+                }
+                return uint.TryParse(p, NumberStyles.HexNumber, CultureInfo.CurrentCulture, out value);
             }
             return true;
         }
-*/
+
 
         // Try to parse a base 10 or base 16 number from string
         bool ParseUShortParameter(string p, out ushort value)
@@ -480,22 +495,27 @@ namespace SnesDebugger
             for (int i = 0; i < Instruction_Depth; i++)
             {
                 ushort pc = (ushort)(snes.cpu.PC + lookAheadBytes);
-                byte opCode = snes.memory.ReadByte(snes.cpu.PB, pc);
+                byte opCode = snes.MemoryMap.ReadByte(snes.cpu.PB, pc);
                 lookAheadBytes++;
 
                 var newInstruction = StoredInstruction.DeepCopy(snes.cpu.GetInstruction(opCode));
                 NextInstructions.Add(newInstruction);
 
-                ushort operandValue = 0;
+                uint operandValue = 0;
                 if (newInstruction.OperandLength == 1)
                 {
-                    operandValue = snes.memory.ReadByte(snes.cpu.PB, (ushort)(snes.cpu.PC + lookAheadBytes));
+                    operandValue = snes.MemoryMap.ReadByte(snes.cpu.PB, (ushort)(snes.cpu.PC + lookAheadBytes));
                     lookAheadBytes++;
                 }
                 else if (newInstruction.OperandLength == 2)
                 {
-                    operandValue = snes.memory.ReadShort(snes.cpu.PB, (ushort)(snes.cpu.PC + lookAheadBytes));
+                    operandValue = snes.MemoryMap.ReadShort(snes.cpu.PB, (ushort)(snes.cpu.PC + lookAheadBytes));
                     lookAheadBytes += 2;
+                }
+                else if (newInstruction.OperandLength == 3)
+                {
+                    operandValue = snes.MemoryMap.ReadLong(snes.cpu.PB, (ushort)(snes.cpu.PC + lookAheadBytes));
+                    lookAheadBytes += 3;
                 }
 
                 newInstruction.Operand = operandValue;

@@ -5,30 +5,14 @@ using System.Text;
 namespace Y2Snes.Core
 {
 
-    // TODO: This is LoROM Memory Map, this should be written in sucha way that it can be swapped out for HiROM
-
-    public class Memory : IMemoryReaderWriter
+    public class LoRomMemoryMap : IBankedMemoryReaderWriter
     {
-        public byte OpenBus { get; set; }
+        Memory memory;
 
-        public byte[] WRam { get; set; }
-        public byte[] DmaPpuRam { get; set; }
-
-        SuperFamicom system;
-
-        public Memory(SuperFamicom system)
+        public LoRomMemoryMap(Memory memory)
         {
-            this.system = system;
-
-            // 128K
-            WRam = new byte[0x20000];
-
-            // 768 bytes
-            DmaPpuRam = new byte[0x300];
+            this.memory = memory; 
         }
-
-
-        // Memory Map
 
 
         public byte ReadByte(byte bank, ushort address)
@@ -41,28 +25,34 @@ namespace Y2Snes.Core
                 {
                     uint romAddress = (uint)(address - 0x8000);
                     romAddress += (uint)(bank * 0x8000);
-                    return system.rom.ReadByte(romAddress);
+                    return memory.Rom.ReadByte(romAddress);
                 }
                 else if(address >= 0x0000 && address <= 0x1FFF)
                 {
                     // Provides access to the first 8K of RAM, ignores the bank
-                    return WRam[address];
+                    return memory.WRam[address];
                 }
-                // DMA, PPU2 hardware registers, always accesses the same data regardless of bank
+                else if (address >= 0x2100 && address <= 0x21FF)
+                {
+                    // PPU1, APU, hardware registers
+                    return memory.ApuPpu1Ram[address - 0x2100];
+                }
+                
                 else if (address >= 0x4200 && address <= 0x44FF)
                 {
-                    return DmaPpuRam[address - 0x4200];
+                    // DMA, PPU2 hardware registers, always accesses the same data regardless of bank
+                    return memory.DmaPpu2Ram[address - 0x4200];
                 }
             }
             else if (bank == 0x7E)
             {
                 // RAM access, first 64K 
-                return WRam[address];
+                return memory.WRam[address];
             }
             else if (bank == 0x7F)
             {
                 // RAM second 64K
-                return WRam[address + 0xFFFF];
+                return memory.WRam[address + 0xFFFF];
             }
             throw new ArgumentException("bad memory read");
         }
@@ -75,6 +65,13 @@ namespace Y2Snes.Core
         }
 
 
+        public UInt32 ReadLong(byte bank, ushort address)
+        {
+            // NB: Little Endian
+            return (UInt32)((ReadByte(bank, (ushort)(address + 2)) << 16) | (ReadByte(bank, (ushort)(address + 1)) << 8) | ReadByte(bank, address));
+        }
+
+
         public void WriteByte(byte bank, ushort address, byte value)
         {
             if (bank >= 0x00 && bank <= 0x3F)
@@ -82,26 +79,32 @@ namespace Y2Snes.Core
                 if (address >= 0x0000 && address <= 0x1FFF)
                 {
                     // Provides access to the first 8K of RAM, ignores the bank
-                    WRam[address] = value;
+                    memory.WRam[address] = value;
                 }
-                else if (bank >= 0x00 && bank <= 0x3F)
+                else if (address >= 0x2100 && address <= 0x21FF)
+                {
+                    // PPU1, APU, hardware registers
+                    memory.ApuPpu1Ram[address - 0x2100] = value; 
+                }
+                else if (address >= 0x4200 && address <= 0x44FF)
                 {
                     // DMA, PPU2 hardware registers
-                    if (address >= 0x4200 && address <= 0x44FF)
-                    {
-                        DmaPpuRam[address - 0x4200] = value;
-                    }
+                    memory.DmaPpu2Ram[address - 0x4200] = value;
+                }
+                else
+                {
+                    throw new ArgumentException("bad memory write");
                 }
             }
             else if (bank == 0x7E)
             {
                 // RAM access, first 64K 
-                WRam[address] = value;
+                memory.WRam[address] = value;
             }
             else if (bank == 0x7F)
             {
                 // RAM second 64K
-                WRam[address + 0xFFFF] = value;
+                memory.WRam[address + 0xFFFF] = value;
             }
             else
             {
@@ -114,6 +117,13 @@ namespace Y2Snes.Core
         {
             WriteByte(bank, address, (byte)(value & 0x00ff));
             WriteByte(bank, (ushort)(address + 1), (byte)((value & 0xff00) >> 8));
+        }
+
+        public void WriteLong(byte bank, ushort address, UInt32 value)
+        {
+            WriteByte(bank, address, (byte)(value & 0x000000ff));
+            WriteByte(bank, (ushort)(address + 1), (byte)((value & 0x0000ff00) >> 8));
+            WriteByte(bank, (ushort)(address + 2), (byte)((value & 0x00ff0000) >> 16));
         }
     }
 }

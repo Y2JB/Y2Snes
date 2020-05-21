@@ -28,7 +28,7 @@ namespace WinFormRender
 
         Stopwatch timer = new Stopwatch();
         long elapsedMs;
-        long elapsedMsBgWin;
+        //long elapsedMsBgWin;
         int framesDrawn;
         int fps;
 
@@ -36,7 +36,7 @@ namespace WinFormRender
         Rectangle fpsRect;
         Point fpsPt;
 
-        MenuStrip menu;
+        //MenuStrip menu;
 
 #if THREADED_RENDERER
         bool drawFrame = false;
@@ -141,6 +141,8 @@ namespace WinFormRender
             fpsPt = new Point(ClientRectangle.Width - 75, 10);
 
             gameRect = new Rectangle(0, 0, ClientRectangle.Width, ClientRectangle.Height);
+            
+            /*
             if(menu != null)
             {
                 fpsPt.Y = 10 + menu.Height; 
@@ -148,7 +150,7 @@ namespace WinFormRender
                 gameRect.Y = menu.Height;
                 gameRect.Height -= menu.Height;
             }
-
+            */
             if (gfxBufferedContext != null)
             {
                 gfxBuffer = gfxBufferedContext.Allocate(this.CreateGraphics(), this.DisplayRectangle);
@@ -219,15 +221,18 @@ namespace WinFormRender
                     }
                 }
 
-                else if (dbgConsole.SnesMode == SnesDebugConsole.Mode.BreakPoint &&
-                            dbgConsole.BreakpointStepAvailable)
+                else if (dbgConsole.SnesMode == SnesDebugConsole.Mode.BreakPoint)
                 {
-                    dbgConsole.OnPreBreakpointStep();
-                    snes.Step();
-                    dbgConsole.PeekSequentialInstructions();
-                    dbgConsole.OnPostBreakpointStep();
-                    consoleWindow.RefreshDmgSnapshot();
-                    consoleWindow.RefreshConsoleText();
+                    Thread.Sleep(10);
+                    if (dbgConsole.BreakpointStepAvailable)
+                    {
+                        dbgConsole.OnPreBreakpointStep();
+                        snes.Step();
+                        dbgConsole.PeekSequentialInstructions();
+                        dbgConsole.OnPostBreakpointStep();
+                        consoleWindow.RefreshDmgSnapshot();
+                        consoleWindow.RefreshConsoleText();
+                    }
                 }              
                 
             }

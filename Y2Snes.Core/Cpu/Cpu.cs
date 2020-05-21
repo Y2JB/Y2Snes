@@ -9,14 +9,15 @@ namespace Y2Snes.Core
     {
         // Main registers
         public ushort A { get; set; }
-        //public ushort B { get; set; }
+        public byte AL { get { return (byte)(A & 0x00FF); } set { A = (ushort)((A & 0xFF00) | value); } }
+        public byte AH { get { return (byte)((A & 0xFF00) >> 8); } }
 
         // Index registers
         public ushort X { get; set; }
         public ushort Y { get; set; }
 
-        // Direct Page register
-        public ushort DP { get; set; }
+        // Direct Page (Zero Page) register
+        public ushort D { get; set; }
 
         // Data Bank register (8 bit)
         public byte DB { get; set; }
@@ -33,27 +34,19 @@ namespace Y2Snes.Core
         // Stack Pointer (16 bit)
         public ushort SP { get; set; }
 
-        enum CpuFlag
-        {
-            Carry       = 1 << 0,       // C Carry(0=No Carry, 1=Carry)
-            Zero        = 1 << 1,       // Z Zero(0=Nonzero, 1=Zero)
-            IrqDisable  = 1 << 2,       // I IRQ Disable(0=IRQ Enable, 1=IRQ Disable)
-            Decimal     = 1 << 3,       // D Decimal Mode(0=Normal, 1=BCD Mode for ADC/SBC opcodes)
-            Break       = 1 << 4,       // X/B Break Flag(0=IRQ/NMI, 1=BRK/PHP opcode)  (0=16bit, 1=8bit)
-            Unused      = 1 << 5,       // M/U Unused(Always 1)
-            Overflow    = 1 << 6,       // V Overflow(0=No Overflow, 1=Overflow)
-            Negative    = 1 << 7,       // N Negative/Sign(0=Positive, 1=Negative)
-        }
-        Instruction[] instructions = new Instruction[256];
-        
-        public Instruction GetInstruction(byte opcode) { return instructions[opcode]; }
+        public IAbsoluteMemoryReaderWriter MemoryAbsolute { get; private set; }
 
         SuperFamicom system;
-
+        IBankedMemoryReaderWriter memoryMap;
+        
 
         public Cpu(SuperFamicom system)
         {
             this.system = system;
+            memoryMap = system.MemoryMap;
+
+            MemoryAbsolute = new AbsoluteMemoryReaderWriter(memoryMap);
+
             RegisterInstructionHandlers();
         }
 
@@ -61,87 +54,66 @@ namespace Y2Snes.Core
         public void Reset(ushort resetVector)
         {
             PC = system.rom.ResetVectorEM;
+            SP = 0x00;
+
+            // Acc, X & Y all start in 8 bit mode
+            SetFlag(CpuFlag.M);
+            SetFlag(CpuFlag.X);
+            SetFlag(CpuFlag.IrqDisable);
         }
 
 
         public void Step()
         {
-            byte opCode = system.memory.ReadByte(0x00, PC++);
+            byte opCode = memoryMap.ReadByte(PB, PC++);
 
-            var instruction = instructions[opCode];
+            var instruction = GetInstruction(opCode);
             if (instruction == null || instruction.Handler == null)
             {
                 throw new ArgumentException(String.Format("Unsupported instruction 0x{0:X2} {1}", opCode, instruction == null ? "-" : instruction.Name));
             }
 
-            ushort operandValue = 0;
+            uint operandValue = 0;
             if (instruction.OperandLength == 1)
             {
-                operandValue = system.memory.ReadByte(0x00, PC);
+                operandValue = memoryMap.ReadByte(PB, PC);
             }
             else if (instruction.OperandLength == 2)
             {
-                operandValue = system.memory.ReadShort(0x00, PC);
+                operandValue = memoryMap.ReadShort(PB, PC);
+            }
+            else if (instruction.OperandLength == 3)
+            {
+                operandValue = memoryMap.ReadLong(PB, PC);
             }
             PC += instruction.OperandLength;
 
+            // TODO: or can openbus just be set in memory.read?
+            // OpenBus = foo
+
             instruction.Handler(operandValue);
-
         }
 
-
-        void SetFlag(CpuFlag flag)
-        {
-            P |= (byte)flag;
-        }
-
-
-        void ClearFlag(CpuFlag flag)
-        {
-            P &= (byte)~((byte)flag);
-        }
-
-        void ClearAllFlags()
-        {
-            P = (byte) CpuFlag.Unused;
-        }
 
         public override String ToString()
         {
-            return String.Format("A - 0x{0:X4}{1}X - 0x{2:X4}{3}Y - 0x{4:X4}{5}P - 0x{6:X2}{7}SP - 0x{8:X4}{9}PC - 0x({10:X2}){11:X4}{12}",
-                A, Environment.NewLine, X, Environment.NewLine, Y, Environment.NewLine, P, Environment.NewLine, SP, Environment.NewLine, PB, PC, Environment.NewLine);
+            string flags = String.Format("{0}{1}{2}{3}{4}{5}{6}{7}",   CarryFlag ? "C" : "-", ZeroFlag ? "Z" : "-", IrqDisableFlag ? "I" : "-", DecimalFlag ? "D" : "-",
+                                                                    XFlag ? "X" : "-", MFlag ? "M" : "-", OverflowFlag ? "V" : "-", NegativeFlag ? "N" : "-");
+
+
+            return String.Format("PC: ({0:X2}){1}{2}A: {3:X4}{4}X: {5:X4}{6}Y - {7:X4}{8}SP - {9:X4}{10}D - {11:X4}{12}DB - {13:X2}{14}P - {15:X2}{16}{17}{18}",
+                                    PB, PC, Environment.NewLine, 
+                                    A, Environment.NewLine, 
+                                    X, Environment.NewLine, 
+                                    Y, Environment.NewLine, 
+                                    SP, Environment.NewLine,
+                                    D, Environment.NewLine,
+                                    DB, Environment.NewLine, 
+                                    P, Environment.NewLine,
+                                    flags, Environment.NewLine);
+
+     
         }
 
-
-        void RegisterInstructionHandlers()
-        {
-            instructions[0x78] = new Instruction("SEI", 0x78, 0, (v) => this.SEI());
-            instructions[0x9C] = new Instruction("STZ 0x{0:X4}", 0x9C, 2, (v) => this.STZ(v));
-            instructions[0xEA] = new Instruction("NOP", 0xEA, 0, (v) => this.NOP());
-            
-
-            // Check we don't have repeat id's (we made a type in the table above)
-            for (int i = 0; i < 255; i++)
-            {
-                var instruction = instructions[i];
-                if (instruction == null) continue;
-
-                if (instruction.OpCode != i)
-                {
-                    throw new ArgumentException("Bad opcode");
-                }
-                for (int j = 0; j < 255; j++)
-                {
-                    if (i == j) continue;
-                    var rhs = instructions[j];
-                    if (rhs == null) continue;
-
-                    if (instruction.OpCode == rhs.OpCode)
-                    {
-                        throw new ArgumentException("Bad opcode");
-                    }
-                }
-            }
-        }
     }
 }
