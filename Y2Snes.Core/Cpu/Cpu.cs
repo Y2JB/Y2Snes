@@ -4,9 +4,15 @@ using System.Text;
 
 namespace Y2Snes.Core
 {
-    // Snes uses a modified W65C816S 21.47Mhz
+    // Snes uses a modified W65C816S 3.58 MHz
     public partial class Cpu
     {
+        // 1 Cpu cycle is 6 Master Clock cycles. The Master Clock syncs everything (PPU etc) so we measure everything in Master clocks 
+        // The system divides the master clock to produce the CPU clock. The divider depends on the accessed address. RAM and slow ROM are 8 clocks per cycle; 
+        // most everything else is 6 clocks per cycle.
+        public const int One_Cpu_Cycle = 6;
+        public const int One_Cpu_Cycle_Slow = 8;
+
         // Main registers
         public ushort A { get; set; }
         public byte AL { get { return (byte)(A & 0x00FF); } set { A = (ushort)((A & 0xFF00) | value); } }
@@ -41,13 +47,15 @@ namespace Y2Snes.Core
 
         public IAbsoluteLongMemoryReaderWriter MemoryAbsolute { get; private set; }
 
-        SuperFamicom system;
+        public UInt32 Ticks { get; private set; }
+
+        SuperFamicom snes;
         IBankedMemoryReaderWriter memoryMap;
         
 
         public Cpu(SuperFamicom system)
         {
-            this.system = system;
+            this.snes = system;
             memoryMap = system.MemoryMap;
 
             MemoryAbsolute = new AbsoluteLongMemoryReaderWriter(memoryMap);
@@ -58,7 +66,7 @@ namespace Y2Snes.Core
 
         public void Reset(ushort resetVector)
         {
-            PC = system.rom.ResetVectorEM;
+            PC = snes.rom.ResetVectorEM;
             SP = 0x00;
 
             // Acc, X & Y all start in 8 bit mode
@@ -68,6 +76,14 @@ namespace Y2Snes.Core
         }
 
 
+        
+        // The PPU outputs half pixels at 10.74 MHz, which is one-half the master clock.This is faster than the CPU clock, which is 3.58 MHz when accessing fast memory or 2.68 MHz 
+        // when accessing slow memory.
+
+
+        // $0000-$1FFF is slow memory, and all of banks $7E and $7F are slow memory
+        // Fast memory is memory controller registers($4200-$43FF), the B bus($2100-$21FF), and ROM with bit 23 set($808000-$80FFFF, $818000-$81FFFF, $828000-$82FFFF, ..., $BF8000-$FFFFFF)
+        // ROM with bit 23 clear($008000-$00FFFF, $018000-$01FFFF, $028000-$02FFFF, ..., $3F8000-$7DFFFF) is also slow memory
         public void Step()
         {
             byte opCode = memoryMap.ReadByte(PB, PC++);
@@ -77,6 +93,15 @@ namespace Y2Snes.Core
             {
                 throw new ArgumentException(String.Format("Unsupported instruction 0x{0:X2} {1}", opCode, instruction == null ? "-" : instruction.Name));
             }
+
+
+            // I think this is when the PC no longer points to code within our PB block. Then we have to switch to addressing which takes and extra cycles 
+            /* TODO: WHen PC goes over a 4K block boundary, we switch to 'slow' opcodes??? See cpuexec.cpp ln 160
+            if ((Registers.PCw & MEMMAP_MASK) + ICPU.S9xOpLengths[Op] >= MEMMAP_BLOCK_SIZE)
+		    {
+				    Opcodes = S9xOpcodesSlow;
+		    } 
+              */
 
             uint operandValue = 0;
             if (instruction.OperandLength == 1)
@@ -100,6 +125,33 @@ namespace Y2Snes.Core
             }
 
             instruction.Handler(operandValue);
+        }
+
+
+        public void StackPush16(ushort value)
+        {
+            memoryMap.WriteShort(0x00, (ushort)(SP - 1), value);
+            SP -= 2;            
+        }
+
+        public void StackPush8(byte value)
+        {
+            memoryMap.WriteByte(0x00, (ushort)(SP), value);
+            SP--;
+        }
+
+        public ushort StackPop16()
+        {
+            ushort value = memoryMap.ReadShort(0x00, (ushort)(SP + 1));
+            SP += 2;
+            return value;
+        }
+
+        public byte StackPop8()
+        {
+            byte value = memoryMap.ReadByte(0x00, (ushort)(SP + 1));
+            SP ++;
+            return value;
         }
 
 

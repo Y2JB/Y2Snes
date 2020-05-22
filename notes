@@ -1,0 +1,49 @@
+ignore list
+APU = sound 
+gun = lightgun
+
+
+
+$0000-$1FFF is slow memory, and all of banks $7E and $7F are slow memory
+Fast memory is memory controller registers ($4200-$43FF), the B bus ($2100-$21FF), and ROM with bit 23 set ($808000-$80FFFF, $818000-$81FFFF, $828000-$82FFFF, ..., $BF8000-$FFFFFF)
+ROM with bit 23 clear ($008000-$00FFFF, $018000-$01FFFF, $028000-$02FFFF, ..., $3F8000-$7DFFFF) is also slow memory
+
+https://snesdev.mesen.ca/wiki/index.php?title=Memory_Mapping
+scroll down for table with Slow, Fast and XSlow (extra slow)
+everything below bank $80 that is not a register is slow access
+work ram is slow access, even above $80
+there's is no difference between lorom/hirom (or any cartridge type) for this, afaik
+"idle" cycles that perform no memory read or write are always fast (6 cycles)
+
+
+<<<Can we move the below logic to a PPU state machine?>>>
+cpuexec.cpp
+
+S9xDoHEventProcessing (void)
+
+It's a (bad) state machine. Every state calls S9xReschedule which sets the next state to switch to
+
+
+
+This is called as cpu cycles happen. Line rendering, v_counter etc all seem to happen here
+
+
+v_counter increases on ln 275
+
+
+Starts actual rendering...
+ln 380 - 			if (CPU.V_Counter == FIRST_VISIBLE_LINE)	// V=1
+				S9xStartScreenRefresh();
+				
+				
+				
+				
+				
+				
+https://copetti.org/projects/consoles/super-nintendo/
+The system outputs a standard resolution of 256x224, PAL systems output 256×240 however most games don’t use the extra pixels and show a letterbox (black lines) instead.
+
+Overall, both PPU packages are designed to serve different functionality:
+
+PPU 1: Renders graphics (tiles) and applies transformations on them (rotation and scaling).
+PPU 2: Provides effects such as window, mosaic and fades over the rendered graphics.

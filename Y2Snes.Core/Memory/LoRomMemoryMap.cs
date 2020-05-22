@@ -88,6 +88,10 @@ namespace Y2Snes.Core
                 }
                 else if (address >= 0x4200 && address <= 0x44FF)
                 {
+                    if(address == 0x420B || address == 0x420C)
+                    {
+                        throw new NotImplementedException("DMA STARTING");
+                    }
                     // DMA, PPU2 hardware registers
                     memory.DmaPpu2Ram[address - 0x4200] = value;
                 }

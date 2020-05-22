@@ -6,6 +6,13 @@ namespace Y2Snes.Core
     public partial class Cpu
     {
 
+        // 08
+        void PHP()
+        {
+            // Push Processor Status Register
+            StackPush8(P);
+        }
+
         //10
         void BPL(sbyte n)
         {
@@ -21,7 +28,6 @@ namespace Y2Snes.Core
             }
         }
 
-
         // 18
         void CLC()
         {
@@ -33,6 +39,16 @@ namespace Y2Snes.Core
         {
             // Transfer 16-bit Accumulator to Stack Pointer
             SP = A;
+        }
+
+        // 20
+        void JSR(ushort nn)
+        {
+            // 	Jump to Subroutine
+            StackPush16((ushort)(PC-1));
+            PC = nn;
+            //PushW(Registers.PCw - 1);
+            //S9xSetPCBase(ICPU.ShiftedPB + addr);
         }
 
         // 38
@@ -49,7 +65,15 @@ namespace Y2Snes.Core
             SetZN(D);
         }
 
- 
+
+        // 60
+        void RTS()
+        {
+            // Return from Subroutine
+            PC = StackPop16();
+            PC++;
+        }
+
         // 78
         void SEI()
         {
